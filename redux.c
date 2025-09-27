@@ -58,7 +58,7 @@ static uint8_t sdp_response[28] =
 
 static struct in6_addr *localip = NULL;
 
-static struct iso1PhysicalValueType EVTargetVoltage;
+static struct iso1PhysicalValueType EVTargetVoltage, EVTargetCurrent;
 
 static void get_link_local_addr(const char *ifname)
 {
@@ -308,6 +308,15 @@ int main(int argc, char *argv[])
           if (!exiIn.V2G_Message_isUsed) continue;
           exiOut.V2G_Message_isUsed = 1u;
 
+          /*
+          NOTE: the following V2G message types are deliberately not handled:
+          ServiceDetailReq (opt VAS)
+          MeteringReceiptReq (opt Metering)
+          CertificateUpdateReq (opt Certificate Installation)
+          CertificateInstallationReq (opt Certificate Update)
+          ChargingStatusReq (specific to AC charging) 
+          */
+
           if (exiIn.V2G_Message.Body.SessionSetupReq_isUsed) {
 
             exiOut.V2G_Message.Header.SessionID.bytesLen = 8;
@@ -315,7 +324,7 @@ int main(int argc, char *argv[])
             exiOut.V2G_Message.Body.SessionSetupRes_isUsed = 1u;
             struct iso1SessionSetupResType *body = &exiOut.V2G_Message.Body.SessionSetupRes;
             body->ResponseCode = iso1responseCodeType_OK;
-            body->EVSEID.charactersLen = set_chars(body->EVSEID.characters, ARRAY_SIZE(body->EVSEID.characters), "ABC123");
+            body->EVSEID.charactersLen = set_chars(body->EVSEID.characters, ARRAY_SIZE(body->EVSEID.characters), "ZZ00000");
             body->EVSETimeStamp_isUsed = 0u;
 
           } else if (exiIn.V2G_Message.Body.ServiceDiscoveryReq_isUsed) {
@@ -382,13 +391,16 @@ int main(int argc, char *argv[])
 
           } else if (exiIn.V2G_Message.Body.PreChargeReq_isUsed) {
 
-            /* jot down what the target voltage is */
+            /* jot down the targets */
             EVTargetVoltage = exiIn.V2G_Message.Body.PreChargeReq.EVTargetVoltage;
+            EVTargetCurrent = exiIn.V2G_Message.Body.PreChargeReq.EVTargetCurrent;
+
             exiOut.V2G_Message.Body.PreChargeRes_isUsed = 1u;
-            exiOut.V2G_Message.Body.PreChargeRes.ResponseCode = iso1responseCodeType_OK;
-            exiOut.V2G_Message.Body.PreChargeRes.DC_EVSEStatus.EVSENotification = iso1EVSENotificationType_None;
-            exiOut.V2G_Message.Body.PreChargeRes.DC_EVSEStatus.NotificationMaxDelay = max_delay;
-            exiOut.V2G_Message.Body.PreChargeRes.EVSEPresentVoltage = EVTargetVoltage;
+            struct iso1PreChargeResType *body = &exiOut.V2G_Message.Body.PreChargeRes;
+            body->ResponseCode = iso1responseCodeType_OK;
+            body->DC_EVSEStatus.EVSENotification = iso1EVSENotificationType_None;
+            body->DC_EVSEStatus.NotificationMaxDelay = max_delay;
+            body->EVSEPresentVoltage = EVTargetVoltage;
 
           } else if (exiIn.V2G_Message.Body.PowerDeliveryReq_isUsed) {
 
@@ -407,6 +419,21 @@ int main(int argc, char *argv[])
             body->DC_EVSEStatus.EVSENotification = iso1EVSENotificationType_None;
             body->DC_EVSEStatus.NotificationMaxDelay = max_delay;
             body->EVSEPresentVoltage = EVTargetVoltage;
+
+          } else if (exiIn.V2G_Message.Body.CurrentDemandReq_isUsed) {
+
+            /* jot down the targets */
+            EVTargetVoltage = exiIn.V2G_Message.Body.CurrentDemandReq.EVTargetVoltage;
+            EVTargetCurrent = exiIn.V2G_Message.Body.CurrentDemandReq.EVTargetCurrent;
+
+            exiOut.V2G_Message.Body.CurrentDemandRes_isUsed = 1u;
+            struct iso1CurrentDemandResType *body = &exiOut.V2G_Message.Body.CurrentDemandRes;
+            body->ResponseCode = iso1responseCodeType_OK;
+            body->DC_EVSEStatus.NotificationMaxDelay = max_delay;
+            body->DC_EVSEStatus.EVSENotification = iso1EVSENotificationType_None;
+            body->DC_EVSEStatus.EVSEStatusCode = iso1DC_EVSEStatusCodeType_EVSE_Ready;
+            body->EVSEPresentVoltage = EVTargetVoltage;
+            body->EVSEPresentCurrent = EVTargetCurrent;
 
           } else {
 
