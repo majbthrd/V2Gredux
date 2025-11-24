@@ -442,6 +442,13 @@ int main(int argc, char *argv[])
 
           }
 
+          /* if the value has not already been written, echo back the provided SessionID (if any) */
+          if (!exiOut.V2G_Message.Header.SessionID.bytesLen && exiIn.V2G_Message.Header.SessionID.bytesLen)
+          {
+            exiOut.V2G_Message.Header.SessionID.bytesLen = exiIn.V2G_Message.Header.SessionID.bytesLen;
+            memcpy(exiOut.V2G_Message.Header.SessionID.bytes, exiIn.V2G_Message.Header.SessionID.bytes, exiOut.V2G_Message.Header.SessionID.bytesLen);
+          }
+
           *streamOut.pos = V2GTP_HEADER_LENGTH;
           errn = encode_iso1ExiDocument(&streamOut, &exiOut);
           printf("isoenc %d\n", errn);
