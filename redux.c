@@ -335,6 +335,7 @@ int main(int argc, char *argv[])
             body->ResponseCode = iso1responseCodeType_OK;
             body->PaymentOptionList.PaymentOption.array[0] = iso1paymentOptionType_ExternalPayment;
             body->PaymentOptionList.PaymentOption.arrayLen = 1;
+            body->ChargeService.ServiceID = 1;
             body->ChargeService.ServiceCategory = iso1serviceCategoryType_EVCharging;
             body->ChargeService.FreeService = 1;
             body->ChargeService.SupportedEnergyTransferMode.EnergyTransferMode.arrayLen = 1;
